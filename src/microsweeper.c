@@ -34,8 +34,9 @@ static unsigned char a, b, c;
 	unsigned char TILE = 16;
 	unsigned short WSX = 256, WSY = 256;
 	Atom wm_delete_window;
-	#define XCOORD i*TILE
-	#define YCOORD j*TILE
+	unsigned short constX, constY;
+	#define XCOORD i*TILE + constX
+	#define YCOORD j*TILE + constY
 	#define WS WSX
 #else
 	// DO NOT CHANGE!!
@@ -343,6 +344,8 @@ reset_game:
 					}
 					i = WSX>WSY ? WSY : WSX;
 					TILE = i/NUM_TILES;
+					constX = (WSX-TILE*NUM_TILES)/2;
+					constY = (WSY-TILE*NUM_TILES)/2;
 					break;
 			#endif
 		}
