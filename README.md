@@ -24,6 +24,6 @@ When I get it on a QR code potentially.
 
 Just like on the video by MattKC.
 
-# why is the code so goddamn aweful?
+# why is the code so goddamn awful?
 
 because smol code != best code
