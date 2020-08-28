@@ -204,20 +204,23 @@ reset_game:
 				// assembly optimizations :) 
 				i = (event.xbutton.x&0xf0)|(event.xbutton.y>>4);
 
+				event.type = Expose;
+				XSendEvent(dpy, win, 0, 0, &event);
 				switch(event.xbutton.button) {
 					case 1: // left click
 						#ifdef BUILD_2K
 						if(c) {
-							for(i=0; i<255; i++) field[i] = 0;
-							event.type = Expose;
-							XSendEvent(dpy, win, 0, 0, &event);
+							//c=0;
+							for(i=0; i<256; i++) field[i] = 0;
 							goto reset_game;
 						}
 						#endif
 						if(field[i]&MINE_SET) {
 							#ifdef BUILD_2K
-								XStoreName(dpy, win, "You lost. Left/Right click - restart/quit.");
+								XStoreName(dpy, win, "You lost. L/R click - restart/quit.");
 								c = GAME_END;
+								field[i] |= FIELD_SET;
+								break;
 							#else
 								return; // you ded
 							#endif
@@ -240,16 +243,13 @@ reset_game:
 				}
 				if(j == MINES) { 
 					#ifdef BUILD_2K
-						XStoreName(dpy, win, "You won. Left/Right click - restart/quit.");
+						XStoreName(dpy, win, "You won. L/R click - restart/quit.");
 						c = GAME_END;
 					#else
 						puts("U won");
 						return;
 					#endif
 				}
-
-				event.type = Expose;
-				XSendEvent(dpy, win, 0, 0, &event);
 				break;
 		}
 	}
