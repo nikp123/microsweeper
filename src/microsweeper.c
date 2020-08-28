@@ -3,21 +3,18 @@
 #include <time.h>
 #include <sys/random.h>
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 
 // BUILD CONFIGS
 #ifdef BUILD_FULL
+	#define BUILD_QR
+#endif
+#ifdef BUILD_QR
 	#define BUILD_2K
 #endif
 #ifdef BUILD_2K
 	#define BUILD_MINIMAL
 #endif
-
-// DO NOT CHANGE!!
-#define NUM_TILES 16
-#define TILE 16
-#define AREA NUM_TILES*NUM_TILES
-#define WS NUM_TILES*TILE
-#define MINES 25
 
 static Window win;
 static Display *dpy;
@@ -33,10 +30,56 @@ static unsigned char a, b, c;
 #define MINE_SET   0b00100000
 #define NUMBER_SET 0b00001111
 
-#define RED       0xffff0000
-#define WHITE     0xffffffff
-#define GRAY      0x80808080
-#define BLACK     0x00000000
+#ifdef BUILD_QR
+	unsigned char TILE = 16;
+	unsigned short WSX = 256, WSY = 256;
+	Atom wm_delete_window;
+	#define XCOORD i*TILE
+	#define YCOORD j*TILE
+	#define WS WSX
+#else
+	// DO NOT CHANGE!!
+	#define TILE 16
+	#define WS NUM_TILES*TILE
+	#define XCOORD a
+	#define YCOORD b
+#endif
+
+#define MINES     25
+#define AREA      256
+#define NUM_TILES 16
+
+#ifdef BUILD_QR
+	#define BLUE      colors[0]
+	#define GREEN     colors[1]
+	#define RED       colors[2]
+	#define DARK_BLUE colors[3]
+	#define DARK_RED  colors[4]
+	#define CYAN      colors[5]
+	#define BLACK     colors[6]
+	#define GRAY      colors[7]
+	
+	#define WHITE     colors[8]
+	#define BG_COL    colors[9]
+	
+	unsigned int colors[] = {
+		0xff0100fe,
+		0xff017f01,
+		0xfffe0000,
+		0xff010080,
+		0xff810102,
+		0xff008081,
+		0xff000000,
+		0xff808080,
+		0xffffffff,
+		0xffc0c0c0
+	};
+#else
+	#define BG_COL 0x00000000
+	#define WHITE  0xffffffff
+	#define RED    0xffff0000
+	#define GRAY   0x80808080
+#endif
 
 #define GAME_END  0xff
 
@@ -45,22 +88,23 @@ static unsigned char a, b, c;
 // 1st bit - open/closed
 // 2nd bit - flagged
 // 3rd bit - mine
-// 4rd bit - has mine near it
 // 5-8 bit - mine count (1-8)
 
-//void dump_field() {
-//	for(j = 0; j < 16; j++) {
-//		for(i = 0; i < 16; i++) {
-//			if(field[i<<4|j]&MINE_SET) putchar('m');
-//			else {
-//				int lol = field[i<<4|j] & NUMBER_SET;
-//				if(lol) printf("%d", lol);
-//				else putchar(' ');
-//			}
-//		}
-//		putchar('\n');
-//	}
-//}
+#ifdef BUILD_FULL
+void dump_field() {
+	for(j = 0; j < 16; j++) {
+		for(i = 0; i < 16; i++) {
+			if(field[i<<4|j]&MINE_SET) putchar('m');
+			else {
+				int lol = field[i<<4|j] & NUMBER_SET;
+				if(lol) printf("%d", lol);
+				else putchar(' ');
+			}
+		}
+		putchar('\n');
+	}
+}
+#endif
 
 char isAvail(char x, char y) {
 	if(x<0 || x>15 || y<0 || y>15) return 0;
@@ -70,20 +114,20 @@ char isAvail(char x, char y) {
 
 	if(x>0) {
 		a = field[((x-1)<<4)|y];
-		if((a&FIELD_SET)&&!(a&0xf)) return 1;
+		if((a&FIELD_SET)&&!(a&NUMBER_SET)) return 1;
 	}
 	if(x<15) {
 		a = field[((x+1)<<4)|y];
-		if((a&FIELD_SET)&&!(a&0xf)) return 1;
+		if((a&FIELD_SET)&&!(a&NUMBER_SET)) return 1;
 	}
 
 	if(y>0) {
 		a = field[(x<<4)|(y-1)];
-		if((a&FIELD_SET)&&!(a&0xf)) return 1;
+		if((a&FIELD_SET)&&!(a&NUMBER_SET)) return 1;
 	}
 	if(y<15) {
 		a = field[(x<<4)|(y+1)];
-		if((a&FIELD_SET)&&!(a&0xf)) return 1;
+		if((a&FIELD_SET)&&!(a&NUMBER_SET)) return 1;
 	}
 
 	return 0;
@@ -139,7 +183,9 @@ void generate_field() {
 			field[k] |= l;
 		}
 	}
-	//dump_field();
+	#ifdef BUILD_FULL
+		dump_field();
+	#endif
 }
 
 void main() {
@@ -154,7 +200,12 @@ void main() {
 	// assign window to the display - practically show it
 	XMapWindow(dpy, win);
 	// KeyPressMask
-	XSelectInput(dpy, win, ExposureMask|ButtonPressMask);
+	XSelectInput(dpy, win, StructureNotifyMask|ExposureMask|ButtonPressMask);
+
+	#ifdef BUILD_QR
+		wm_delete_window = XInternAtom(dpy, "WM_DELETE_WINDOW", 0);
+		XSetWMProtocols(dpy, win, &wm_delete_window, 1);
+	#endif
 
 reset_game:
 #ifdef BUILD_2K
@@ -167,15 +218,19 @@ reset_game:
 		XNextEvent(dpy, &event);
 		switch(event.type) {
 			case Expose: // redraw window
-				XSetForeground(dpy, gc, BLACK);
-				XFillRectangle(dpy, win, gc, 0, 0, WS, WS);
-				for(i = 0; i < TILE; i++) {
-					for(j = 0; j < TILE; j++) {
+				XSetForeground(dpy, gc, BG_COL);
+				#ifdef BUILD_QR
+					XFillRectangle(dpy, win, gc, 0, 0, WSX, WSY);
+				#else
+					XFillRectangle(dpy, win, gc, 0, 0, WS, WS);
+				#endif
+				for(i = 0; i < NUM_TILES; i++) {
+					for(j = 0; j < NUM_TILES; j++) {
 						a = i<<4; b = j<<4;
 						char abc[2] = { 0, 0 };
 						XSetForeground(dpy, gc, WHITE);
 						if(!(field[a|j]>>7))
-							XFillRectangle(dpy, win, gc, a, b, 16, 16);
+							XFillRectangle(dpy, win, gc, XCOORD, YCOORD, TILE, TILE);
 						if(field[a|j]&FLAG_SET) {
 							abc[0] = 'P';
 							#ifdef BUILD_2K
@@ -187,22 +242,33 @@ reset_game:
 							l = field[a|j]&NUMBER_SET;
 							if(l) {
 								abc[0] = '0' + l;
+								#ifdef BUILD_QR
+									if(field[a|j]&FIELD_SET) XSetForeground(dpy, gc, colors[l-1]);
+								#endif
 							}
 						}
-						if(abc[0]) XDrawString(dpy, win, gc, a + 5, b + 14, abc, 1);
+						if(abc[0]) XDrawString(dpy, win, gc, XCOORD + 5, YCOORD + 14, abc, 1);
 
 						#ifdef BUILD_2K
 							XSetForeground(dpy, gc, GRAY);
-							if((field[a|j]&MINE_SET) && (field[a|j]&FIELD_SET))
-								XFillRectangle(dpy, win, gc, a, b, 16, 16);
-							XDrawRectangle(dpy, win, gc, a, b, 16, 16);
+							if((field[a|j]&MINE_SET) && (field[a|j]&FIELD_SET)) {
+								#ifdef BUILD_QR
+									XSetForeground(dpy, gc, RED);
+								#endif
+								XFillRectangle(dpy, win, gc, XCOORD, YCOORD, TILE, TILE);
+							}
+							XDrawRectangle(dpy, win, gc, XCOORD, YCOORD, TILE, TILE);
 						#endif
 					}
 				}
 				break;
 			case ButtonPress:
-				// assembly optimizations :) 
-				i = (event.xbutton.x&0xf0)|(event.xbutton.y>>4);
+				#ifdef BUILD_QR
+					i = ((event.xbutton.x/TILE) << 4) | (event.xbutton.y/TILE);
+				#else
+					// assembly optimizations :) 
+					i = (event.xbutton.x&0xf0)|(event.xbutton.y>>4);
+				#endif
 
 				event.type = Expose;
 				XSendEvent(dpy, win, 0, 0, &event);
@@ -216,6 +282,10 @@ reset_game:
 						}
 						#endif
 						if(field[i]&MINE_SET) {
+							#ifdef BUILD_QR
+								for(i=0; i<256; i++)
+									if(field[i]&MINE_SET) field[i] |= FIELD_SET;
+							#endif
 							#ifdef BUILD_2K
 								XStoreName(dpy, win, "You lost. L/R click - restart/quit.");
 								c = GAME_END;
@@ -226,7 +296,11 @@ reset_game:
 							#endif
 						}
 						field[i] &= ~FLAG_SET; // unset right click
-						floodFill(event.xbutton.x>>4, event.xbutton.y>>4, 1);
+						#ifdef BUILD_QR
+							floodFill(event.xbutton.x/TILE, event.xbutton.y/TILE, 1);
+						#else
+							floodFill(event.xbutton.x>>4, event.xbutton.y>>4, 1);
+						#endif
 						break;
 					case 3: // right click
 						#ifdef BUILD_2K
@@ -251,6 +325,26 @@ reset_game:
 					#endif
 				}
 				break;
+			#ifdef BUILD_QR
+				case ClientMessage:
+					// user has quit, halt execution
+					if((Atom)event.xclient.data.l[0] == wm_delete_window) return;
+					break;
+				case ConfigureNotify:
+					WSX = event.xconfigure.width;
+					WSY = event.xconfigure.height;
+					if(WSX<256) {
+						WSX = 256;
+						XResizeWindow(dpy, win, WSX, WSY);
+					}
+					if(WSY<256) {
+						WSY = 256;
+						XResizeWindow(dpy, win, WSX, WSY);
+					}
+					i = WSX>WSY ? WSY : WSX;
+					TILE = i/NUM_TILES;
+					break;
+			#endif
 		}
 	}
 }
