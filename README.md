@@ -10,19 +10,27 @@ By stripping everything except absolutely necessary
 ## No, I meant how to actually do it!?
 Get tcc with i386 cross-compilation (if you're on x86_64, which you probably should by now).
 
-Install X11-devel or Xlib on your Linux PC.
+Install xz, GCC, Make and Xlib on your Linux PC.
 
-Run this: ``tcc microsweeper.c -o microsweeper -m32 -L/usr/lib32 -nostdlib -lc -lX11 -DSMOL``
+Get and compile: https://www.pouet.net/prod.php?which=85558
 
-You should get 5340 binary, which can be ``strip``-ped down to 5332.
+Then copy the ``./vondehi`` executable into this directory.
 
-UPX can further shrink it down to 4412. But that's not enought.
+There are multiple flavours to choose from:
+```
+minimal - smallest one at 1900 bytes
+2k - 2048 bytes
+full - all features available
+```
 
-### WHEN IS IT ENOUGH!?
+Once you've picked your favourite, run: ``make TARGET=$one_of_the_above``
 
-When I get it on a QR code potentially.
+And you should get your ``microsweeper`` executable that you can use by now.
 
-Just like on the video by MattKC.
+## Quick disclaimer
+This as mentioned above, uses vondehi which relies on the ``xzcat`` decompressor being on the system.
+This means that it isn't fully "self-reliant". But this shouldn't be a issue for most since it's part
+of the binutils, which you can find on every Linux distro pretty much.
 
 # why is the code so goddamn awful?
 

@@ -4,6 +4,14 @@
 #include <sys/random.h>
 #include <X11/Xlib.h>
 
+// BUILD CONFIGS
+#ifdef BUILD_FULL
+	#define BUILD_2K
+#endif
+#ifdef BUILD_2K
+	#define BUILD_MINIMAL
+#endif
+
 // DO NOT CHANGE!!
 #define NUM_TILES 16
 #define TILE 16
@@ -18,16 +26,19 @@ static GC gc;
 
 static unsigned char *field;
 static unsigned short i, j, k, l;
-static unsigned char a, b;
+static unsigned char a, b, c;
 
 #define FIELD_SET  0b10000000
 #define FLAG_SET   0b01000000
 #define MINE_SET   0b00100000
 #define NUMBER_SET 0b00001111
 
+#define RED       0xffff0000
 #define WHITE     0xffffffff
 #define GRAY      0x80808080
 #define BLACK     0x00000000
+
+#define GAME_END  0xff
 
 // bit structure of the field
 
@@ -89,8 +100,6 @@ void floodFill(char x, char y, char skip) {
 }
 
 void generate_field() {
-	// neophodno, jer onda rand() daje iste rezultate
-
 	// mine generator
 	for(i = 0; i < MINES; i++) {
 		retry_mine:
@@ -142,12 +151,17 @@ void main() {
 
 	field = calloc(AREA, 1);
 
-	generate_field();
-
 	// assign window to the display - practically show it
 	XMapWindow(dpy, win);
 	// KeyPressMask
 	XSelectInput(dpy, win, ExposureMask|ButtonPressMask);
+
+reset_game:
+#ifdef BUILD_2K
+	c = 0;
+	XStoreName(dpy, win, "Microsweeper");
+#endif
+	generate_field();
 
 	while(1) {
 		XNextEvent(dpy, &event);
@@ -160,11 +174,15 @@ void main() {
 						a = i<<4; b = j<<4;
 						char abc[2] = { 0, 0 };
 						XSetForeground(dpy, gc, WHITE);
-						if(!(field[a|j]>>7)) // FIELD_SET is magic for open
+						if(!(field[a|j]>>7))
 							XFillRectangle(dpy, win, gc, a, b, 16, 16);
 						if(field[a|j]&FLAG_SET) {
 							abc[0] = 'P';
-							XSetForeground(dpy, gc, GRAY);
+							#ifdef BUILD_2K
+								if(!(field[a|j]&FIELD_SET)) XSetForeground(dpy, gc, RED);
+							#else
+								XSetForeground(dpy, gc, GRAY);
+							#endif
 						} else {
 							l = field[a|j]&NUMBER_SET;
 							if(l) {
@@ -173,8 +191,12 @@ void main() {
 						}
 						if(abc[0]) XDrawString(dpy, win, gc, a + 5, b + 14, abc, 1);
 
-						//XSetForeground(dpy, gc, GRAY);
-						//XDrawRectangle(dpy, win, gc, a, b, 16, 16);
+						#ifdef BUILD_2K
+							XSetForeground(dpy, gc, GRAY);
+							if((field[a|j]&MINE_SET) && (field[a|j]&FIELD_SET))
+								XFillRectangle(dpy, win, gc, a, b, 16, 16);
+							XDrawRectangle(dpy, win, gc, a, b, 16, 16);
+						#endif
 					}
 				}
 				break;
@@ -184,11 +206,29 @@ void main() {
 
 				switch(event.xbutton.button) {
 					case 1: // left click
-						if(field[i]&MINE_SET) return; // you ded
+						#ifdef BUILD_2K
+						if(c) {
+							for(i=0; i<255; i++) field[i] = 0;
+							event.type = Expose;
+							XSendEvent(dpy, win, 0, 0, &event);
+							goto reset_game;
+						}
+						#endif
+						if(field[i]&MINE_SET) {
+							#ifdef BUILD_2K
+								XStoreName(dpy, win, "You lost. Left/Right click - restart/quit.");
+								c = GAME_END;
+							#else
+								return; // you ded
+							#endif
+						}
 						field[i] &= ~FLAG_SET; // unset right click
 						floodFill(event.xbutton.x>>4, event.xbutton.y>>4, 1);
 						break;
 					case 3: // right click
+						#ifdef BUILD_2K
+						if(c) return;
+						#endif
 						if(!(field[i]&FIELD_SET))
 							field[i]^=FLAG_SET;
 						break;
@@ -199,8 +239,13 @@ void main() {
 					if(field[i]&FIELD_SET) j--;
 				}
 				if(j == MINES) { 
-					puts("u win");
-					return;
+					#ifdef BUILD_2K
+						XStoreName(dpy, win, "You won. Left/Right click - restart/quit.");
+						c = GAME_END;
+					#else
+						puts("U won");
+						return;
+					#endif
 				}
 
 				event.type = Expose;
