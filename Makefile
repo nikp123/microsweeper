@@ -4,9 +4,10 @@ obj = $(src:.c=.o)
 PREFIX ?= /usr/local
 CONFIG_PREFIX ?= /etc
 
-minimal_FLAGS = -DSMOL -DBUILD_MINIMAL
-2k_FLAGS      = -DSMOL -DBUILD_2K
-full_FLAGS    = -DSMOL -DBUILD_FULL
+minimal_FLAGS = -DBUILD_MINIMAL
+2k_FLAGS      = -DBUILD_2K
+qr_FLAGS      = -DBUILD_QR
+full_FLAGS    = -DBUILD_FULL
 
 TARGET ?= minimal
 
@@ -18,12 +19,14 @@ all: microsweeper
 all: compress_pack
 
 debug: LDFLAGS = -g -lX11 -lc -L/usr/lib32
-debug: CFLAGS  = -g -m32
+debug: CFLAGS  = -g -m32 ${${TARGET}_FLAGS}
 debug: CC = gcc
 debug: microsweeper
 
 microsweeper: $(obj)
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
+
+#	strip --strip-all microsweeper
 
 compress_pack:
 	xz -9 -z microsweeper
