@@ -265,7 +265,7 @@ reset_game:
 				break;
 			case ButtonPress:
 				#ifdef BUILD_QR
-					i = ((event.xbutton.x/TILE) << 4) | (event.xbutton.y/TILE);
+					i = (((event.xbutton.x-constX)/TILE) << 4) | ((event.xbutton.y-constY)/TILE);
 				#else
 					// assembly optimizations :) 
 					i = (event.xbutton.x&0xf0)|(event.xbutton.y>>4);
@@ -298,7 +298,7 @@ reset_game:
 						}
 						field[i] &= ~FLAG_SET; // unset right click
 						#ifdef BUILD_QR
-							floodFill(event.xbutton.x/TILE, event.xbutton.y/TILE, 1);
+							floodFill((event.xbutton.x-constX)/TILE, (event.xbutton.y-constY)/TILE, 1);
 						#else
 							floodFill(event.xbutton.x>>4, event.xbutton.y>>4, 1);
 						#endif
