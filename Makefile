@@ -9,7 +9,7 @@ minimal_FLAGS = -DBUILD_MINIMAL
 qr_FLAGS      = -DBUILD_QR
 full_FLAGS    = -DBUILD_FULL
 
-TARGET ?= minimal
+TARGET ?= full
 
 CFLAGS = -m32 -DSMOL ${${TARGET}_FLAGS}
 LDFLAGS = -lX11 -lc -O2 -nostdlib -m32 -L/usr/lib32
