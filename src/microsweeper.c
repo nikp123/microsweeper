@@ -108,28 +108,24 @@ void dump_field() {
 #endif
 
 char isAvail(char x, char y) {
-	if(x<0 || x>15 || y<0 || y>15) return 0;
+	if((x|y)&0xF0) return 0;
 
 	// if current tile already activated, FAIL
 	if(field[(x<<4)|y]&FIELD_SET) return 0;
 
-	if(x>0) {
-		a = field[((x-1)<<4)|y];
-		if((a&FIELD_SET)&&!(a&NUMBER_SET)) return 1;
-	}
-	if(x<15) {
-		a = field[((x+1)<<4)|y];
-		if((a&FIELD_SET)&&!(a&NUMBER_SET)) return 1;
-	}
+	if((x|y)&0xF0) return 0;
+	
+	a = field[((x-1)<<4)|y];
+	if((a&FIELD_SET)&&!(a&NUMBER_SET)) return 1;
 
-	if(y>0) {
-		a = field[(x<<4)|(y-1)];
-		if((a&FIELD_SET)&&!(a&NUMBER_SET)) return 1;
-	}
-	if(y<15) {
-		a = field[(x<<4)|(y+1)];
-		if((a&FIELD_SET)&&!(a&NUMBER_SET)) return 1;
-	}
+	a = field[((x+1)<<4)|y];
+	if((a&FIELD_SET)&&!(a&NUMBER_SET)) return 1;
+
+	a = field[(x<<4)|(y-1)];
+	if((a&FIELD_SET)&&!(a&NUMBER_SET)) return 1;
+
+	a = field[(x<<4)|(y+1)];
+	if((a&FIELD_SET)&&!(a&NUMBER_SET)) return 1;
 
 	return 0;
 }
