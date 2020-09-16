@@ -147,39 +147,23 @@ void generate_field() {
 		getrandom(&a, 1, 0);
 		if(field[a]&MINE_SET) goto retry_mine;
 		field[a] = MINE_SET;
+
+		// Optimized for-loop
+		b=0;
+		do {
+			// Enter if the lower-bit coordinate matches (calculated by difference)
+			if(((short)(b&0xf)-(short)(a&0xf)) <= 1 &&
+				((short)(b&0xf)-(short)(a&0xf)) >= -1) {
+				// Enter if the higher-bit coordinate matches (same deal)
+				if((short)((b&0xf0)>>4)-(short)((a&0xf0)>>4) <= 1 &&
+					(short)((b&0xf0)>>4)-(short)((a&0xf0)>>4) >= -1) {
+					field[b]++; // Increase bordering mine counter
+				}
+			}
+			b++;
+		} while(b);
 	}
 
-	for(i = 0; i < 16; i++) {
-		for(j = 0; j < 16; j++) {
-			k = i<<4|j;
-			if(field[k]&MINE_SET) continue;
-
-			l = 0;
-			k-=17;
-
-			a = j<15;
-			b = i<15;
-
-			if((field[k] & MINE_SET) && j && i) l++;
-			k++;
-			if((field[k] & MINE_SET) && i     ) l++;
-			k++;
-			if((field[k] & MINE_SET) && i && a) l++;
-			k+=14;
-			if((field[k] & MINE_SET) && j     ) l++;
-			k++;
-			k++;
-			if((field[k] & MINE_SET) && a     ) l++;
-			k+=14;
-			if((field[k] & MINE_SET) && b && j) l++;
-			k++;
-			if((field[k] & MINE_SET) && b     ) l++;
-			k++;
-			if((field[k] & MINE_SET) && b && a) l++;
-			k-=17;
-			field[k] |= l;
-		}
-	}
 	#ifdef BUILD_FULL
 		dump_field();
 	#endif
